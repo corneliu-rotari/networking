@@ -2,6 +2,9 @@
     "files.associations": {
         "protocols.h": "c",
         "lib.h": "c",
-        "queue.h": "c"
-    }
+        "queue.h": "c",
+        "tested.h": "c",
+        "in.h": "c"
+    },
+    // "C_Cpp.errorSquiggles": "disabled",
 }
