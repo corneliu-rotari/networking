@@ -16,8 +16,9 @@ typedef struct arp_entry ARP_entry;
 #define ARP_TYPE 0x0806
 #define IPV4_TYPE 0x0800
 #define PREFIX_MASK 4294967040
-#define DEST_UNREACH 3
-#define TIME_EXCEED 11
+#define ICMP_DEST_UNREACH 3
+#define ICMP_TIME_EXCEED 11
+#define ICMP_REPLAY 0
 #define ARP_CACHE_SIZE 12
 
 RTable_entry *find_next_route(RTable_entry *table, int len, uint32_t ip_daddr);

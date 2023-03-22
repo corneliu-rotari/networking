@@ -4,7 +4,8 @@
         "lib.h": "c",
         "queue.h": "c",
         "tested.h": "c",
-        "in.h": "c"
+        "in.h": "c",
+        "router.h": "c"
     },
     // "C_Cpp.errorSquiggles": "disabled",
 }

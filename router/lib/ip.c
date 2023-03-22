@@ -99,10 +99,8 @@ RTable_entry *find_next_route(RTable_entry *table, int len, uint32_t ip_daddr)
 
 void change_icmp(ICMP_hdr *icmp_hdr, uint8_t type, int len)
 {
-	printf("%d", len);
 	icmp_hdr->type = type;
 	icmp_hdr->code = 0;
 	icmp_hdr->checksum = 0;
-	// icmp_hdr->un.echo.id = ntohs(4);
 	icmp_hdr->checksum = htons(checksum((uint16_t *)icmp_hdr, len));
 }

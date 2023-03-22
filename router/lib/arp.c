@@ -2,6 +2,9 @@
 
 int arp_replay(Eth_hdr *eth_hdr, ARP_hdr *arp_hdr, int interface)
 {
+	char* ip = get_interface_ip(interface);
+	printf("%s\n", ip);
+
 	memcpy(&arp_hdr->tha, &arp_hdr->sha, arp_hdr->hlen);
 	get_interface_mac(interface, arp_hdr->sha);
 

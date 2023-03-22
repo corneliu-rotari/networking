@@ -1,5 +1,11 @@
 #include "router.h"
 
+struct packet {
+	char buf[MAX_PACKET_LEN];
+	int len;
+	int interface;
+};
+
 void print_ip(uint32_t ip)
 {
 	for (int i = 0; i < 4; i++)
@@ -35,12 +41,36 @@ void swap_mac_addr(Eth_hdr *eth_hdr)
 	print_mac((eth_hdr->ether_shost));
 }
 
+uint32_t convert_ip_uint32(char* sir) {
+	printf("Before conversion : %s\n", sir);
+	int last_point = 0;
+	uint32_t to_ret = 0;
+	int add = 0;
+	sir[strlen(sir)] = '.';
+	for (int i = 0; i < strlen(sir); i++)
+	{
+		char buf[4] = { 0 };
+		if (sir[i] == '.') {
+			memcpy(buf, sir + last_point, i - last_point);
+			uint8_t sub_part = (uint8_t)atoi(buf);
+			memcpy(((uint8_t*) (&to_ret)) + add, &sub_part, sizeof(uint8_t));
+			add++;
+			last_point = i  + 1;
+			// if (add == 3)
+			// 	break;
+		}
+	}
+	printf("After :");
+	return to_ret;
+}
+
 int main(int argc, char *argv[])
 {
 	char buf[MAX_PACKET_LEN];
 
 	// Do not modify this line
 	init(argc - 2, argv + 2);
+	queue q = queue_create();
 
 	RTable_entry *rtable = malloc(sizeof(RTable_entry) * 100000);
 	int rt_size = read_rtable(argv[1], rtable);
@@ -51,31 +81,37 @@ int main(int argc, char *argv[])
 
 	while (1)
 	{
-
 		int interface;
 		size_t len;
 
 		interface = recv_from_any_link(buf, &len);
 		DIE(interface < 0, "recv_from_any_links");
-		printf("Recived a packet\n");
+		printf("\nRecived a packet\n");
+		
+		// struct packet *arrived = malloc(sizeof(struct packet));
+		// memcpy(arrived->buf, buf, MAX_PACKET_LEN);
+		// arrived->interface = interface;
+		// arrived->len = len;
+		// queue_enq(q, (void *) arrived);
+
 
 		Eth_hdr *eth_hdr = (Eth_hdr *)buf;
 		uint16_t eth_type = ntohs(eth_hdr->ether_type);
 
-		if (eth_type == ARP_TYPE)
-		{
+		// if (eth_type == ARP_TYPE)
+		// {
+		// 	// ARP PROTOCOL REPALY
+		// 	printf("ARP SEARCH and REPLAY\n");
+		// 	ARP_hdr *arp_hdr = (ARP_hdr *)(buf + sizeof(Eth_hdr));
 
-			// ARP PROTOCOL REPALY
-			printf("\nARP SEARCH and REPLAY\n");
-			ARP_hdr *arp_hdr = (ARP_hdr *)(buf + sizeof(Eth_hdr));
-
-			arp_replay(eth_hdr, arp_hdr, interface);
-		}
-		else if (eth_type == IPV4_TYPE)
+		// 	arp_replay(eth_hdr, arp_hdr, interface);
+		// }
+		// else 
+		if (eth_type == IPV4_TYPE)
 		{
 
 			// IPv4 PROTOCOL
-			printf("\nIP Control\n");
+			printf("IP Control\n");
 
 			IP_hdr *ip_hdr = (IP_hdr *)(buf + sizeof(Eth_hdr));
 			ICMP_hdr *icmp_hdr = (ICMP_hdr *)(buf + sizeof(Eth_hdr) + sizeof(IP_hdr));
@@ -92,14 +128,31 @@ int main(int argc, char *argv[])
 			if (ip_hdr->ttl <= 1)
 			{
 				printf("TTL Exipred\n");
-				change_icmp(icmp_hdr, TIME_EXCEED, len - sizeof(Eth_hdr) - sizeof(IP_hdr));
+				ip_hdr->check = htons(old_check);
+				memcpy(((char*) icmp_hdr) + sizeof(icmp_hdr), ip_hdr, sizeof(IP_hdr) + 8);
+
+				uint16_t add_to_size = (uint16_t) (sizeof(ICMP_hdr) + sizeof(IP_hdr) + 8);
+				ip_hdr->tot_len += htons(add_to_size);
+				ip_hdr->protocol = 1;
+				change_icmp(icmp_hdr, ICMP_TIME_EXCEED, len - sizeof(Eth_hdr) - sizeof(IP_hdr) + add_to_size);
 				swap_mac_addr(eth_hdr);
-				send_to_link(interface, buf, len);
+				send_to_link(interface, buf, len + add_to_size);
 				continue;
 			}
 			else
 			{
 				ip_hdr->ttl--;
+			}
+			
+			uint32_t interface_ip = convert_ip_uint32(get_interface_ip(interface));
+			print_ip(interface_ip);
+			print_ip(ip_hdr->daddr);
+			if (interface_ip == ip_hdr->daddr) {
+				print_ip(interface_ip);
+				change_icmp(icmp_hdr, ICMP_REPLAY, len - sizeof(Eth_hdr) - sizeof(IP_hdr));
+				swap_mac_addr(eth_hdr);
+				send_to_link(interface, buf, len);
+				continue;
 			}
 
 			// Find next route
@@ -109,9 +162,15 @@ int main(int argc, char *argv[])
 			{
 				printf("Next null\n");
 				// TODO send back ICMP Destination Unreachble
-				change_icmp(icmp_hdr, DEST_UNREACH, len - sizeof(Eth_hdr) - sizeof(IP_hdr));
+				ip_hdr->check = htons(old_check);
+				memcpy(((char*) icmp_hdr) + sizeof(icmp_hdr), ip_hdr, sizeof(IP_hdr) + 8);
+
+				uint16_t add_to_size = (uint16_t) (sizeof(ICMP_hdr) + sizeof(IP_hdr) + 8);
+				ip_hdr->tot_len += htons(add_to_size);
+				ip_hdr->protocol = 1;
+				change_icmp(icmp_hdr, ICMP_DEST_UNREACH, len - sizeof(Eth_hdr) - sizeof(IP_hdr) + add_to_size);
 				swap_mac_addr(eth_hdr);
-				send_to_link(interface, buf, len);
+				send_to_link(interface, buf, len + add_to_size);
 				continue;
 			}
 			else
