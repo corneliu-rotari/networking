@@ -5,7 +5,7 @@ int arp_replay(Eth_hdr *eth_hdr, ARP_hdr *arp_hdr, int interface)
 	// char* ip = get_interface_ip(interface);
 	// printf("%s\n", ip);
 	// print_ip(arp_hdr->tpa);
-	memcpy(&arp_hdr->tha, &arp_hdr->sha, arp_hdr->hlen);
+	memcpy(arp_hdr->tha, arp_hdr->sha, arp_hdr->hlen);
 	get_interface_mac(interface, arp_hdr->sha);
 
 	arp_hdr->op = htons(2);
@@ -14,8 +14,8 @@ int arp_replay(Eth_hdr *eth_hdr, ARP_hdr *arp_hdr, int interface)
 	arp_hdr->tpa = arp_hdr->spa;
 	arp_hdr->spa = adr_tmp;
 
-	memcpy(&eth_hdr->ether_dhost, &arp_hdr->tha, arp_hdr->hlen);
-	memcpy(&eth_hdr->ether_shost, &arp_hdr->sha, arp_hdr->hlen);
+	memcpy(eth_hdr->ether_dhost, arp_hdr->tha, arp_hdr->hlen);
+	memcpy(eth_hdr->ether_shost, arp_hdr->sha, arp_hdr->hlen);
 	return 1;
 }
 
@@ -77,9 +77,13 @@ int arp_request(char* buf, RTable_entry *next, queue q, size_t *len_add,
 // Receive replay
 	interface = recv_from_any_link(buf, &len);
 	DIE(interface < 0, "recv_from_any_links");
+
+	printf("-------here %hu\n", htons(arp_hdr->op));
 	
-	while (ntohs(eth_hdr->ether_type) != ARP_TYPE && arp_hdr->op == htons(2))
+	while (ntohs(eth_hdr->ether_type) != ARP_TYPE || arp_hdr->op != htons(2))
 	{
+		printf("Type %hu %hu", ntohs(eth_hdr->ether_type), ARP_TYPE);
+		printf("Type %hu %hu", arp_hdr->op, htons(2));
 		queue_enq(q, (void *) create_packet(buf, len, interface));
 		interface = recv_from_any_link(buf, &len);
 		DIE(interface < 0, "recv_from_any_links");
@@ -93,6 +97,8 @@ int arp_request(char* buf, RTable_entry *next, queue q, size_t *len_add,
 	arp_table->cache[arp_table->size].ip = arp_hdr->spa;
 	memcpy(arp_table->cache[arp_table->size].mac, arp_hdr->sha, arp_hdr->hlen);
 	arp_table->size++;
+	printf("S_IP : "); print_ip( arp_hdr->spa);
+	printf("S_Mac : "); print_mac(arp_hdr->sha);
 
 // Resotre the last packet
 	if (!queue_empty(q)) {

@@ -56,12 +56,9 @@ int main(int argc, char *argv[])
 		int interface;
 		size_t len;
 
-		interface = recv_from_any_link(buf, &len);
-		DIE(interface < 0, "recv_from_any_links");
-		printf("\nRecived a packet\n");
+
 
 		if (!queue_empty(q)) {
-
 			queue_enq(q, (void *) create_packet(buf, len, interface));
 
 			Packet* old_packet = (Packet *) (queue_deq(q));
@@ -69,6 +66,11 @@ int main(int argc, char *argv[])
 			interface = old_packet->interface;
 			len = old_packet->len;
 			free(old_packet);
+
+		} else {
+			interface = recv_from_any_link(buf, &len);
+			DIE(interface < 0, "recv_from_any_links");
+			printf("\nRecived a packet\n");
 		}
 
 		Eth_hdr *eth_hdr = (Eth_hdr *)buf;
@@ -77,11 +79,13 @@ int main(int argc, char *argv[])
 		switch (eth_type) {
 			case ARP_TYPE: {
 				// ARP PROTOCOL REPALY
-				printf("ARP SEARCH and REPLAY\n");
 				ARP_hdr *arp_hdr = (ARP_hdr *)(buf + sizeof(Eth_hdr));
+				if (ntohs(arp_hdr->op) == 1) {
+					printf("ARP SEARCH and REPLAY\n");
 
-				arp_replay(eth_hdr, arp_hdr, interface);
-				send_to_link(interface, buf, len);
+					arp_replay(eth_hdr, arp_hdr, interface);
+					send_to_link(interface, buf, len);
+				}
 				break;
 			}
 			case IPV4_TYPE: {
@@ -160,20 +164,18 @@ int main(int argc, char *argv[])
 				// Write address to frame
 				ARP_entry* arp_entry = arp_cache_search(arp_table, next);
 				if(arp_entry == NULL) {
+					printf("ARP REQUEST\n");
 					arp_request(buf, next, q, &len, &interface, arp_table);
 					get_interface_mac(next->interface, eth_hdr->ether_shost);
 				} else {
 					get_interface_mac(next->interface, eth_hdr->ether_shost);
-					memcpy(&eth_hdr->ether_dhost, arp_entry->mac, sizeof(arp_entry->mac));
+					memcpy(eth_hdr->ether_dhost, arp_entry->mac, sizeof(arp_entry->mac));
 				}
+				
 				send_to_link(interface, buf, len);
-
 			} default:
 				break;
 		}
-		// printf("Dest :"); print_mac((eth_hdr->ether_dhost));
-		// printf("Source :"); print_mac((eth_hdr->ether_shost));
-		// Send to link
 	}
 	free(q);
 	free(arp_table);
