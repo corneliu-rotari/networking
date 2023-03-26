@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "protocols.h": "c",
+        "router.h": "c"
+    }
+}

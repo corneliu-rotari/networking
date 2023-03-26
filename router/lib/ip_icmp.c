@@ -32,14 +32,16 @@ int ip_hdr_check(Eth_hdr *eth_hdr, IP_hdr *ip_hdr, int interface, uint16_t old_c
 	return 1;
 }
 
-int remove_invalid_entries(RTable_entry* table, int size) {
+int remove_invalid_entries(RTable_entry *table, int size)
+{
 	int nr_removed = 0;
 	for (int i = 0; i < size; i++)
 	{
 		uint32_t a_en = ntohl(table[i].prefix);
 		uint32_t a_mask = ntohl(table[i].mask);
-		if ((a_en & a_mask) != a_en) {
-			table[i].prefix = MAX_IP;
+		if ((a_en & a_mask) != a_en)
+		{
+			table[i].prefix = IP_MAX;
 			nr_removed++;
 		}
 	}
@@ -53,16 +55,14 @@ int compare_rtables_entry(const void *a, const void *b)
 	RTable_entry b_entry = *(RTable_entry *)b;
 	uint32_t a_en = ntohl(a_entry.prefix);
 	uint32_t b_en = ntohl(b_entry.prefix);
-	uint32_t a_mask = ntohl(a_entry.mask);
-	uint32_t b_mask = ntohl(b_entry.mask);
-	
+
 	if (a_en != b_en)
 	{
 		return a_en - b_en;
 	}
 	else
 	{
-		return a_mask - b_mask;
+		return ntohl(a_entry.mask) - ntohl(b_entry.mask);
 	}
 }
 
@@ -98,7 +98,6 @@ RTable_entry *find_next_route(RTable_entry *table, int len, uint32_t ip_daddr)
 				break;
 			else
 				continue;
-			
 		}
 		else if (searched_ip > prefix)
 		{
@@ -121,7 +120,8 @@ void icmp_change(ICMP_hdr *icmp_hdr, uint8_t type, int len)
 	icmp_hdr->checksum = htons(checksum((uint16_t *)icmp_hdr, len));
 }
 
-uint32_t convert_ip_uint32(char* sir) {
+uint32_t convert_ip_uint32(char *sir)
+{
 	int last_point = 0;
 	uint32_t to_ret = 0;
 	int add = 0;
@@ -129,12 +129,13 @@ uint32_t convert_ip_uint32(char* sir) {
 	for (int i = 0; i < strlen(sir); i++)
 	{
 		char buf[4] = { 0 };
-		if (sir[i] == '.') {
+		if (sir[i] == '.')
+		{
 			memcpy(buf, sir + last_point, i - last_point);
 			uint8_t sub_part = (uint8_t)atoi(buf);
-			memcpy(((uint8_t*) (&to_ret)) + add, &sub_part, sizeof(uint8_t));
+			memcpy(((uint8_t *)(&to_ret)) + add, &sub_part, sizeof(uint8_t));
 			add++;
-			last_point = i  + 1;
+			last_point = i + 1;
 		}
 	}
 	return to_ret;
