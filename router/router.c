@@ -121,14 +121,14 @@ int main(int argc, char *argv[])
 
 			// Write address to frame
 			ARP_entry *arp_entry = arp_cache_search(arp_table, next);
+			get_interface_mac(next->interface, eth_hdr->ether_shost);
+			
 			if (arp_entry == NULL)
 			{
 				arp_request(buf, next, q, &len, &interface, arp_table);
-				get_interface_mac(next->interface, eth_hdr->ether_shost);
 			}
 			else
 			{
-				get_interface_mac(next->interface, eth_hdr->ether_shost);
 				memcpy(eth_hdr->ether_dhost, arp_entry->mac, sizeof(arp_entry->mac));
 			}
 
