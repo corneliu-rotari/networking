@@ -27,14 +27,15 @@ struct pollfd *add_to_poll(struct pollfd *poll_fds, int fd, int *nr_fds)
 
 struct pollfd *remove_poll(struct pollfd *poll_fds, int fd, int *nr_fds, int pos)
 {
-    int nr = *nr_fds - 1;
+    close(fd);
+    int nr = (*nr_fds) - 1;
     for (int i = pos; i < nr; i++)
     {
         poll_fds[i] = poll_fds[i + 1];
     }
     *nr_fds = nr;
-    close(fd);
-    return realloc(poll_fds, nr);
+
+    return realloc(poll_fds, sizeof(struct pollfd) * nr);
 }
 
 void destory_poll(struct pollfd *poll_fds, int nr_fds)

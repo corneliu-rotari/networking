@@ -6,7 +6,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-
 bool isExit(char *input);
 bool isSubscribe(char *input);
 bool isUnsubscribe(char *input);
@@ -29,14 +28,28 @@ void destory_poll(struct pollfd *poll_fds, int nr_fds);
 
 #define MAX_LEN_BUFF 1500
 
-typedef struct CSP
+struct tcp_app_com
 {
-  char id[MAX_LEN_BUFF];
-} CSP_packet;
+  char id[10];
+  char topic[50];
+  uint8_t flags;
 
-typedef struct udp_packet
+} __attribute__((packed));
+
+struct udp_packet
 {
+  char topic[50];
+  uint8_t type;
+  char payload[1500];
+} __attribute__((packed));
 
-}
+typedef struct udp_packet source_packet;
+typedef struct tcp_app_com news_packet;
+
+
+
+
+
+
 
 #endif

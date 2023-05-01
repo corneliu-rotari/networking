@@ -15,12 +15,12 @@
 #include <sys/socket.h>
 
 #include "../lib/lib_tcp_utils..h"
+#include "server.h"
 
 int main(int argc, char const *argv[])
 {
     DIE(argc != 2, "[Usage] : ./server <PORT_NUMBER>\n");
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);
-
 
     int rc, nr_fds;
     int tcp_socket, udp_socket;
@@ -37,7 +37,6 @@ int main(int argc, char const *argv[])
     DIE(rc < 0, "Option Reuse");
     rc = setsockopt(tcp_socket, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
     DIE(rc < 0, "Option Nodelay");
-
 
     udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
     DIE(udp_socket < 0, "UDP Socket");
@@ -61,12 +60,13 @@ int main(int argc, char const *argv[])
 
     bool exit_value = false;
 
+    client_info* active_cli_list = NULL;
 
     while (true)
     {
         if (exit_value)
             break;
-        
+
         rc = poll(poll_fds, nr_fds, -1);
         DIE(rc < 0, "Poll");
 
@@ -84,30 +84,55 @@ int main(int argc, char const *argv[])
                         exit_value = true;
                     }
                 }
-                else if (poll_fds[i].fd == tcp_socket)
+                else
+                if (poll_fds[i].fd == tcp_socket)
                 {
                     struct sockaddr_in cli_addr;
-                    char buf[MAX_LEN_BUFF];
-                    int rec_len;
-                    CSP_packet packet;
+                    news_packet recv_packet;
+
                     socklen_t cli_len = sizeof(cli_addr);
                     int newsockfd = accept(tcp_socket, (struct sockaddr *)&cli_addr, &cli_len);
-                    poll_fds = add_to_poll(poll_fds, newsockfd, &nr_fds);
-                    rec_len = recv(newsockfd,(void*)&buf, MAX_LEN_BUFF, 0);
-                    
-                    printf("New client %s connected from %s:%hu.\n"
-                        ,buf, inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
+
+                    rc = recv(newsockfd, (void *)&recv_packet, sizeof(recv_packet), 0);
+                    DIE(rc < -1, "Recive tcp listen fd");
+
+                    if (!add_client(&active_cli_list, recv_packet.id, nr_fds - 3))
+                    {
+                        close(newsockfd);
+                        printf("Client %s already connected\n", recv_packet.id);
+                    }
+                    else
+                    {
+                        poll_fds = add_to_poll(poll_fds, newsockfd, &nr_fds);
+                        printf("New client %s connected from %s:%hu.\n", recv_packet.id, inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
+                    }
                 }
                 else if (poll_fds[i].fd == udp_socket)
                 {
-                    // printf("Something from UDP\n");
+                    source_packet recv_packet;
+                    recvfrom(udp_socket, (void *)&recv_packet, sizeof(source_packet), 0, NULL, NULL);
                 }
                 else
                 {
                     // printf("Something from TCP at %d\n", poll_fds[i].fd);
-                    poll_fds = remove_poll(poll_fds, poll_fds[i].fd, &nr_fds, i);
+                    news_packet recv_packet;
+
+                    rc = recv(poll_fds[i].fd, &recv_packet, sizeof(recv_packet), 0);
+                    DIE(rc < 0, "Receive from client");
+
+                    if (rc == 0)
+                    {
+                        remove_client(&active_cli_list,i - 3, nr_fds - 3);
+                        poll_fds = remove_poll(poll_fds, poll_fds[i].fd, &nr_fds, i);
+                        i--;
+                    }
+                    else
+                    {
+                        printf(
+                        "Received something fromthe server\n"
+                        );
+                    }
                 }
-                break;
             }
         }
     }
