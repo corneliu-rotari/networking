@@ -278,7 +278,6 @@ def start_and_check_client(server, id, restart=False, test=True):
     success = False
 
   if not outs.startswith("New client C" + id + " connected from"):
-    print(outs)
     print("Error: server did not print that C" + id + " is connected")
     success = False
   

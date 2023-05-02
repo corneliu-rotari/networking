@@ -1,46 +1,110 @@
 #include "server.h"
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
 
-bool add_client(client_info **list_addr, char id[10], int nr_clients)
+bool connect_client(client_database *list, char id[10], int fd)
 {
-    client_info *list = *list_addr;
-    if (!list)
+
+    if (!list->clients_information)
     {
-        list = malloc(sizeof(client_info));
+        list->clients_information = malloc(sizeof(client_info));
     }
     else
     {
-        for (int i = 0; i < nr_clients; i++)
+        for (int i = 0; i < list->nr_clients; i++)
         {
-            if (strncmp(list[i].client_id, id, strlen(id)) == 0 &&
-                strlen(id) == strlen(list[i].client_id))
+            size_t len_id = strlen(id);
+
+            if (strncmp(list->clients_information[i].client_id, id, len_id) == 0 &&
+                len_id == strlen(list->clients_information[i].client_id))
             {
-                return false;
+                if (list->clients_information[i].active == 1)
+                {
+                    return false;
+                }
+                else
+                {
+                    list->clients_information[i].active = 1;
+                    list->clients_information[i].fd = fd;
+                    return true;
+                }
             }
         }
-        client_info* new = realloc(list, sizeof(client_info) * (nr_clients + 1));
-        if(new == NULL)
-            return false;
-        list = new;
+        list->clients_information = realloc(list->clients_information, sizeof(client_info) * (list->nr_clients + 1));
     }
 
-    strncpy(list[nr_clients].client_id, id, 10);
-    *list_addr = list;
+    strncpy(list->clients_information[list->nr_clients].client_id, id, 10);
+    list->clients_information[list->nr_clients].subscribed_to = NULL;
+    list->clients_information[list->nr_clients].nr_subscribed = 0;
+    list->clients_information[list->nr_clients].active = 1;
+    list->clients_information[list->nr_clients].fd = fd;
+    list->nr_clients++;
     return true;
 }
 
-bool remove_client(client_info **list_addr, int pos, int nr_cli)
+client_info *search_client(client_database *list, int fd)
 {
-    client_info *list = *list_addr;
-    nr_cli--;
-    for (int i = pos; i < nr_cli; i++)
+    for (int i = 0; i < list->nr_clients; i++)
     {
-        memcpy(&list[i], &list[i + 1], sizeof(client_info));
+        if (list->clients_information[i].fd == fd)
+        {
+            return &list->clients_information[i];
+        }
     }
-    list = realloc(list, sizeof(client_info) * nr_cli);
-    *list_addr = list;
+    return NULL;
+}
+
+bool disconnect_client(client_database *list, int fd)
+{
+    client_info *client_addr = search_client(list, fd);
+    if (!client_addr)
+        return false;
+
+    printf("Client %s disconnected.\n", client_addr->client_id);
+    client_addr->active = 0;
+    client_addr->fd = 0;
+    return true;
+}
+
+struct topic *search_topic(struct topic *list, char name[50], int nr_topics)
+{
+    for (int i = 0; i < nr_topics; i++)
+    {
+        if (strncmp(list[i].topic, name, strlen(name)) == 0 &&
+            strlen(name) == strlen(list->topic))
+        {
+            return &list[i];
+        }
+    }
+    return NULL;
+}
+
+bool add_topic_to_client(client_database *list, int fd, news_packet *info_addr)
+{
+    client_info *client_addr = search_client(list, fd);
+    if (!client_addr)
+        return false;
+
+    if (client_addr->nr_subscribed == 0)
+    {
+        client_addr->subscribed_to = malloc(sizeof(struct topic));
+    }
+    else
+    {
+        struct topic *exists = search_topic(client_addr->subscribed_to, info_addr->topic, client_addr->nr_subscribed);
+        
+        // TODO : Add sf
+
+        if (exists)
+            return false;
+
+        client_addr->subscribed_to = realloc(client_addr->subscribed_to, sizeof(struct topic) * (client_addr->nr_subscribed + 1));
+    }
+
+    memcpy(client_addr->subscribed_to[client_addr->nr_subscribed].topic, info_addr->topic, sizeof(info_addr->topic));
+    client_addr->subscribed_to[client_addr->nr_subscribed].sf = info_addr->un.req.sf;
+    client_addr->subscribed_to[client_addr->nr_subscribed].message = NULL;
+    client_addr->nr_subscribed++;
     return true;
 }

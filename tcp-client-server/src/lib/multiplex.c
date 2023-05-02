@@ -34,7 +34,6 @@ struct pollfd *remove_poll(struct pollfd *poll_fds, int fd, int *nr_fds, int pos
         poll_fds[i] = poll_fds[i + 1];
     }
     *nr_fds = nr;
-
     return realloc(poll_fds, sizeof(struct pollfd) * nr);
 }
 

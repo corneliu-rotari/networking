@@ -1,5 +1,6 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -g -Wno-error=unused-variable -fPIC
+LIBFLAGS=-lm
 SRC=src
 SER=$(wildcard $(SRC)/server/*.c)
 CLI=$(wildcard $(SRC)/client/*.c)
@@ -22,7 +23,7 @@ server:
 	$(CC) $(CFLAGS) $(SER) $(LIB_SRC) -o server
 
 subscriber:
-	$(CC)  $(CFLAGS) $(CLI) $(LIB_SRC) -o subscriber
+	$(CC) $(CFLAGS) $(CLI) $(LIB_SRC) -o subscriber $(LIBFLAGS)
 
 test:
 	sudo python3 test.py 
