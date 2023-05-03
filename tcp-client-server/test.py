@@ -292,7 +292,7 @@ def check_subscriber_output(c, client_id, target):
   if target not in outc:
     print("Error: C" + client_id + " output should contain [" + target + "], is actually [" + outc.rstrip() + "]")
     return False
-
+  print("Nice for " + target)
   return True
 
 def check_subscriber_stop(server, c, id):

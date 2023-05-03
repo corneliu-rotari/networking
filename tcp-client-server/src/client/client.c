@@ -14,7 +14,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include "../lib/lib_tcp_utils..h"
+#include "../lib/lib_tcp_utils.h"
 
 int main(int argc, char const *argv[])
 {
@@ -64,6 +64,7 @@ int main(int argc, char const *argv[])
             char buff[MAX_LEN_BUFF];
             fgets(buff, MAX_LEN_BUFF, stdin);
             char command[20];
+            char topic[51] = {'\0'};
 
             sscanf(buff, "%s", command);
 
@@ -72,16 +73,20 @@ int main(int argc, char const *argv[])
 
             if (isSubscribe(command))
             {
-                sscanf(buff, "%s %s %hhu", command, send_packet.topic, &send_packet.un.req.sf);
+                sscanf(buff, "%s %s %hhu", command, topic, &send_packet.un.req.sf);
+                memcpy(send_packet.topic, topic, 50);
                 send_packet.un.req.type_action = NEWS_SUB;
                 send(serverfd, (void *)&send_packet, sizeof(send_packet), 0);
+                recv(serverfd, &send_packet, sizeof(send_packet),0);
                 printf("Subscribed to topic.\n");
             }
             else if (isUnsubscribe(buff))
             {
-                sscanf(buff, "%s %s", command, send_packet.topic);
+                sscanf(buff, "%s %s", command, topic);
+                memcpy(send_packet.topic, topic, 50);
                 send_packet.un.req.type_action = NEWS_UNSUB;
                 send(serverfd, (void *)&send_packet, sizeof(send_packet), 0);
+                
                 printf("Unsubscribed from topic.\n");
             }
             else
@@ -118,8 +123,12 @@ int main(int argc, char const *argv[])
                     }
                     case 1:
                     {
-                        uint16_t short_real = *(uint16_t *)recv_packet.un.rep.messege;
-                        printf("%hu.%hu\n", short_real / 100, short_real % 100);
+                        uint16_t short_real = ntohs(*(uint16_t *)recv_packet.un.rep.messege);
+                        printf("%hu.", short_real / 100);
+                        uint16_t right = short_real % 100;
+                        if (right < 10)
+                            printf("0");
+                        printf("%hu\n",right);
                         break;
                     }
                     case 2:
@@ -127,16 +136,27 @@ int main(int argc, char const *argv[])
                         uint8_t sign = *(uint8_t *)recv_packet.un.rep.messege;
                         uint32_t number = ntohl(*(uint32_t*) (recv_packet.un.rep.messege + 1));
                         uint8_t power = *(recv_packet.un.rep.messege+ sizeof(uint32_t)  + 1);
-                        int left = number / (int) pow(10, power);
-                        int right = number % (int) pow(10, power);
+                        int mult_ten = (int) pow(10, power);
+                        int left = number / mult_ten;
+                        int right = number % mult_ten;
                         
                         if (sign == 1)
                             printf("-");
-                        printf("%d.%d\n", left, right);
+                        printf("%d.", left);
+
+                        if (right < 10)
+                            printf("00");
+                        else if (right < 100)
+                            printf("0");
+                        
+                        printf("%d\n",right);
+
                         break;
                     }
-                    case 3:
+                    case 3: {
                         printf("%s\n", recv_packet.un.rep.messege);
+                        break;
+                    }
                     default:
                         break;
                     }

@@ -1,6 +1,6 @@
 #ifndef _SERVER_H
 #define _SERVER_H
-#include "../lib/lib_tcp_utils..h"
+#include "../lib/lib_tcp_utils.h"
 
 struct node {
     news_packet messege;
@@ -14,7 +14,7 @@ struct list {
 
 typedef struct topic
 {
-    char topic[50];
+    char topic[51];
     uint8_t sf;
     struct list* message;
 } topic;

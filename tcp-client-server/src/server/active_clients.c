@@ -92,17 +92,19 @@ bool add_topic_to_client(client_database *list, int fd, news_packet *info_addr)
     }
     else
     {
-        struct topic *exists = search_topic(client_addr->subscribed_to, info_addr->topic, client_addr->nr_subscribed);
+        char topic[51] = {'\0'};
+        memcpy(topic, info_addr->topic, sizeof(50));
+        // struct topic *exists = search_topic(client_addr->subscribed_to, topic, client_addr->nr_subscribed);
         
-        // TODO : Add sf
+        // // TODO : Add sf
 
-        if (exists)
-            return false;
+        // if (exists)
+        //     return false;
 
         client_addr->subscribed_to = realloc(client_addr->subscribed_to, sizeof(struct topic) * (client_addr->nr_subscribed + 1));
     }
 
-    memcpy(client_addr->subscribed_to[client_addr->nr_subscribed].topic, info_addr->topic, sizeof(info_addr->topic));
+    memcpy(client_addr->subscribed_to[client_addr->nr_subscribed].topic, info_addr->topic, 50);
     client_addr->subscribed_to[client_addr->nr_subscribed].sf = info_addr->un.req.sf;
     client_addr->subscribed_to[client_addr->nr_subscribed].message = NULL;
     client_addr->nr_subscribed++;

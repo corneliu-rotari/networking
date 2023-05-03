@@ -14,8 +14,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include "../lib/lib_tcp_utils..h"
+#include "../lib/lib_tcp_utils.h"
 #include "server.h"
+
+
 
 int main(int argc, char const *argv[])
 {
@@ -128,15 +130,19 @@ int main(int argc, char const *argv[])
                     send_packet.un.rep.port_udp = udp_client_addr.sin_port;
                     memcpy(&send_packet.un.rep.messege, &recv_packet.content.payload, sizeof(recv_packet.content.payload));
 
+                    // printf("===============================");
                     for (int j = 0; j < clients_data->nr_clients; j++)
                     {
+                        // printf("%d\n", clients_data->clients_information[j].nr_subscribed);
                         for (int k = 0; k < clients_data->clients_information[j].nr_subscribed; k++)
                         {
-                            // printf("%s, %s\n", clients_data->clients_information[j].subscribed_to[k].topic, send_packet.topic);
+                            // printf("%s\n", clients_data->clients_information[j].subscribed_to[k].topic);
 
-                            if (strncmp(clients_data->clients_information[j].subscribed_to[k].topic, send_packet.topic, strlen(send_packet.topic)) == 0) {
+                            if (strncmp(clients_data->clients_information[j].subscribed_to[k].topic, send_packet.topic, 50) == 0) {
+                                // printf("send => %s\n", send_packet.topic);
                                 if (clients_data->clients_information[j].active)
                                 {
+
                                     send(clients_data->clients_information[j].fd, &send_packet, sizeof(send_packet), 0);
                                 }
                                 else if (clients_data->clients_information[j].subscribed_to[k].sf) {
@@ -145,7 +151,6 @@ int main(int argc, char const *argv[])
                                 break;
                             }
                         }
-
                     }
 
                     break;
@@ -156,6 +161,7 @@ int main(int argc, char const *argv[])
                     rc = recv(poll_fds[i].fd, &recv_packet, sizeof(recv_packet), 0);
                     DIE(rc < 0, "Receive from client");
 
+
                     if (rc == 0)
                     {
                         disconnect_client(clients_data, poll_fds[i].fd);
@@ -163,15 +169,22 @@ int main(int argc, char const *argv[])
                     }
                     else
                     {
+                        
+                        
                         if (recv_packet.type == NEWS_REQ)
                         {
+                            // printf("size %d, %s\n",rc ,recv_packet.topic);
+
                             if (recv_packet.un.req.type_action == NEWS_SUB)
                             {
                                 add_topic_to_client(clients_data, poll_fds[i].fd, &recv_packet);
+                                send(poll_fds[i].fd, &recv_packet, sizeof(recv_packet), 0);
+
                                 // for (int j = 0; j < clients_data->nr_clients; j++)
                                 // {
-                                //     printf("Client : %s [active] : %d\n",
-                                //            clients_data->clients_information[j].client_id, clients_data->clients_information[j].active);
+                                //     printf("Client : %s [active] : %d %d\n",
+                                //            clients_data->clients_information[j].client_id, clients_data->clients_information[j].active,
+                                //            clients_data->clients_information[j].nr_subscribed);
                                 //     for (int k = 0; k < clients_data->clients_information[j].nr_subscribed; k++)
                                 //     {
                                 //         printf("    Topic %s with sf %d\n",
@@ -182,6 +195,7 @@ int main(int argc, char const *argv[])
                             else if (recv_packet.un.req.type_action == NEWS_UNSUB)
                             {
                                 // TODO Add unsubscribe 
+                                send(poll_fds[i].fd, &recv_packet, sizeof(recv_packet), 0);
                                 printf("Unsubscribed\n");
                             }
                         }

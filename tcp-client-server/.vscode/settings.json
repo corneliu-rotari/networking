@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "socket.h": "c",
-        "lib_tcp_utils..h": "c"
+        "lib_tcp_utils.h": "c",
+        "server.h" : "c"
     }
 }

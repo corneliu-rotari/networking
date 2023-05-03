@@ -21,6 +21,7 @@ struct pollfd *add_to_poll(struct pollfd *poll_fds, int fd, int *nr_fds)
     struct pollfd *aux = realloc(poll_fds, sizeof(struct pollfd) * nr);
     aux[nr - 1].fd = fd;
     aux[nr - 1].events = POLLIN;
+    aux[nr - 1].revents = 0;
     *nr_fds = nr;
     return aux;
 }
