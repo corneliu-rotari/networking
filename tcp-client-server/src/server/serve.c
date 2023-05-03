@@ -17,8 +17,6 @@
 #include "../lib/lib_tcp_utils.h"
 #include "server.h"
 
-
-
 int main(int argc, char const *argv[])
 {
     DIE(argc != 2, "[Usage] : ./server <PORT_NUMBER>\n");
@@ -62,15 +60,14 @@ int main(int argc, char const *argv[])
 
     // -----------------------------------------------------------------------------------------------
 
-    client_database *clients_data = malloc(sizeof(client_database));
-    clients_data->clients_information = NULL;
-    clients_data->nr_clients = 0;
+    client_database *c_db = malloc(sizeof(client_database));
+    c_db->clients_information = NULL;
+    c_db->nr_clients = 0;
 
     while (true)
     {
         int nr_events = poll(poll_fds, nr_fds, -1);
         DIE(nr_events < 0, "Poll");
-
 
         for (int i = 0; i < nr_fds; i++)
         {
@@ -83,6 +80,7 @@ int main(int argc, char const *argv[])
 
                     if (isExit(buff))
                     {
+                        // TODO Destroy c_db
                         destory_poll(poll_fds, nr_fds);
                         exit(EXIT_SUCCESS);
                     }
@@ -100,7 +98,7 @@ int main(int argc, char const *argv[])
                     rc = recv(newsockfd, (void *)&recv_packet, sizeof(recv_packet), 0);
                     DIE(rc < -1, "Recive tcp listen fd");
 
-                    if (connect_client(clients_data, recv_packet.un.req.id, newsockfd))
+                    if (connect_client(c_db, recv_packet.un.req.id, newsockfd))
                     {
                         poll_fds = add_to_poll(poll_fds, newsockfd, &nr_fds);
                         printf("New client %s connected from %s:%hu.\n",
@@ -130,30 +128,26 @@ int main(int argc, char const *argv[])
                     send_packet.un.rep.port_udp = udp_client_addr.sin_port;
                     memcpy(&send_packet.un.rep.messege, &recv_packet.content.payload, sizeof(recv_packet.content.payload));
 
-                    // printf("===============================");
-                    for (int j = 0; j < clients_data->nr_clients; j++)
+                    struct topic *topic_addr = search_topic(c_db, recv_packet.topic);
+
+                    if (!topic_addr)
+                        continue;
+
+                    for (int j = 0; j < topic_addr->nr_subscribers; j++)
                     {
-                        // printf("%d\n", clients_data->clients_information[j].nr_subscribed);
-                        for (int k = 0; k < clients_data->clients_information[j].nr_subscribed; k++)
+                        int pos_in_cli_vec = topic_addr->subscribers[j].pos_in_client_vector;
+                        if (c_db->clients_information[pos_in_cli_vec].active)
                         {
-                            // printf("%s\n", clients_data->clients_information[j].subscribed_to[k].topic);
-
-                            if (strncmp(clients_data->clients_information[j].subscribed_to[k].topic, send_packet.topic, 50) == 0) {
-                                // printf("send => %s\n", send_packet.topic);
-                                if (clients_data->clients_information[j].active)
-                                {
-
-                                    send(clients_data->clients_information[j].fd, &send_packet, sizeof(send_packet), 0);
-                                }
-                                else if (clients_data->clients_information[j].subscribed_to[k].sf) {
-                                    // TODO Add to store and forward;
-                                }
-                                break;
-                            }
+                            send(c_db->clients_information[pos_in_cli_vec].fd, &send_packet, sizeof(send_packet), 0);
                         }
-                    }
+                        else if (topic_addr->subscribers[j].sf)
+                        {
+                            store_packet(&topic_addr->subscribers[j], &send_packet);
+                        }
 
+                    }
                     break;
+
                 }
                 else
                 {
@@ -161,42 +155,43 @@ int main(int argc, char const *argv[])
                     rc = recv(poll_fds[i].fd, &recv_packet, sizeof(recv_packet), 0);
                     DIE(rc < 0, "Receive from client");
 
-
                     if (rc == 0)
                     {
-                        disconnect_client(clients_data, poll_fds[i].fd);
+                        disconnect_client(c_db, poll_fds[i].fd);
                         poll_fds = remove_poll(poll_fds, poll_fds[i].fd, &nr_fds, i);
                     }
                     else
                     {
-                        
-                        
+
                         if (recv_packet.type == NEWS_REQ)
                         {
-                            // printf("size %d, %s\n",rc ,recv_packet.topic);
-
                             if (recv_packet.un.req.type_action == NEWS_SUB)
                             {
-                                add_topic_to_client(clients_data, poll_fds[i].fd, &recv_packet);
-                                send(poll_fds[i].fd, &recv_packet, sizeof(recv_packet), 0);
+                                struct topic *topic_addr = search_topic(c_db, recv_packet.topic);
+                                if (!topic_addr)
+                                {
+                                    create_topic(c_db, &recv_packet);
+                                    topic_addr = &c_db->exsitent_topics[c_db->nr_topics - 1];
+                                }
 
-                                // for (int j = 0; j < clients_data->nr_clients; j++)
-                                // {
-                                //     printf("Client : %s [active] : %d %d\n",
-                                //            clients_data->clients_information[j].client_id, clients_data->clients_information[j].active,
-                                //            clients_data->clients_information[j].nr_subscribed);
-                                //     for (int k = 0; k < clients_data->clients_information[j].nr_subscribed; k++)
-                                //     {
-                                //         printf("    Topic %s with sf %d\n",
-                                //                clients_data->clients_information[j].subscribed_to[k].topic, clients_data->clients_information[j].subscribed_to[k].sf);
-                                //     }
-                                // }
+                                int pos;
+                                search_client(c_db, poll_fds[i].fd, &pos);
+
+                                add_client_to_topic(topic_addr, pos, &recv_packet);
+
+                                // Ack sender for subscribing
+                                send(poll_fds[i].fd, &recv_packet, sizeof(recv_packet), 0);
                             }
                             else if (recv_packet.un.req.type_action == NEWS_UNSUB)
                             {
-                                // TODO Add unsubscribe 
+                                struct topic *topic_addr = search_topic(c_db, recv_packet.topic);
+                                if (topic_addr)
+                                {
+                                    int pos;
+                                    search_client(c_db, poll_fds[i].fd, &pos);
+                                    remove_client_from_topic(topic_addr, pos);
+                                }
                                 send(poll_fds[i].fd, &recv_packet, sizeof(recv_packet), 0);
-                                printf("Unsubscribed\n");
                             }
                         }
                     }
