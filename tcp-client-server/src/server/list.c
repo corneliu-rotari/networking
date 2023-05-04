@@ -11,6 +11,25 @@ struct node *init_node(news_packet *to_store)
     return newNode;
 }
 
+
+void destory_list(struct topics_clients *cli_info)
+{
+    if (cli_info == NULL || cli_info->next_mess == NULL)
+        return;
+    
+    struct node *newNode = cli_info->next_mess->head;
+    struct node *aux;
+
+    while (newNode != NULL)
+    {
+        aux = newNode;
+        newNode = newNode->next;
+        free(aux);
+    }
+    free(cli_info->next_mess);
+    cli_info->next_mess = NULL;
+}
+
 void store_packet(struct topics_clients *cli_info, news_packet *to_store)
 {
     if (cli_info->next_mess == NULL)
@@ -32,11 +51,9 @@ void forward_packet(struct topics_clients *cli_info, int fd)
     struct node *newNode = cli_info->next_mess->head;
     while (newNode != NULL)
     {
-        struct node *aux = newNode;
-        send(fd, &newNode->messege, sizeof(news_packet), 0);
+        send_tcp_packet(fd, (char *)&newNode->messege, 
+            NEWS_PACKET_HEADER_SIZE + newNode->messege.size);
         newNode = newNode->next;
-        free(aux);
     }
-    free(cli_info->next_mess);
-    cli_info->next_mess = NULL;
+    destory_list(cli_info);
 }

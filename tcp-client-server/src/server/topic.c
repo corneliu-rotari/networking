@@ -7,8 +7,10 @@ struct topic *search_topic(client_database *c_db, char name[50])
 {
     for (int i = 0; i < c_db->nr_topics; i++)
     {
-        if (strncmp(c_db->exsitent_topics[i].topic, name, 50) == 0 &&
-            strlen(name) == strlen(c_db->exsitent_topics[i].topic))
+        int len_name = strlen(name);
+        int len_topic = strlen(c_db->exsitent_topics[i].topic);
+        if (strncmp(c_db->exsitent_topics[i].topic, name, len_name) == 0 &&
+            len_name == len_topic)
         {
             return &c_db->exsitent_topics[i];
         }
@@ -26,7 +28,7 @@ void create_topic(client_database *c_db, news_packet *info_addr)
     else
         c_db->exsitent_topics = realloc(c_db->exsitent_topics, topic_size * (c_db->nr_topics + 1));
 
-    memcpy(c_db->exsitent_topics[c_db->nr_topics].topic, info_addr->topic, 50);
+    memcpy(c_db->exsitent_topics[c_db->nr_topics].topic, info_addr->un.req.topic, 50);
     c_db->exsitent_topics[c_db->nr_topics].nr_subscribers = 0;
     c_db->exsitent_topics[c_db->nr_topics].subscribers = NULL;
     c_db->nr_topics++;
@@ -35,6 +37,16 @@ void create_topic(client_database *c_db, news_packet *info_addr)
 bool add_client_to_topic(struct topic *topic_addr, int pos, news_packet *info_addr)
 {
     size_t size_cli_add = sizeof(struct topics_clients);
+    for (int i = 0; i < topic_addr->nr_subscribers; i++)
+    {
+        if(topic_addr->subscribers[i].pos_in_client_vector == pos) {
+            topic_addr->subscribers[i].sf = info_addr->un.req.sf;
+            return true;
+        }
+
+    }
+    
+
     if (!topic_addr->subscribers)
     {
         topic_addr->subscribers = malloc(size_cli_add);
@@ -70,3 +82,5 @@ void remove_client_from_topic(struct topic *topic_addr, int pos)
     topic_addr->subscribers = realloc(topic_addr->subscribers, size_cli_add * (topic_addr->nr_subscribers));
     return;
 }
+
+

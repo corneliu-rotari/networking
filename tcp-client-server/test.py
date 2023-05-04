@@ -292,7 +292,7 @@ def check_subscriber_output(c, client_id, target):
   if target not in outc:
     print("Error: C" + client_id + " output should contain [" + target + "], is actually [" + outc.rstrip() + "]")
     return False
-  print("Nice for " + target)
+
   return True
 
 def check_subscriber_stop(server, c, id):
@@ -690,8 +690,8 @@ def h2_test():
             # restart C2 and check that all SF messages are received
             c2 = run_test_c2_restart_sf(server, topics)
 
-    # # send all types of message 30 times in quick succesion and check
-    # run_test_quick_flow(c1, topics)
+    # send all types of message 30 times in quick succesion and check
+    run_test_quick_flow(c1, topics)
 
   # close the server and check that C1 also closes
   run_test_server_stop(server, c1)

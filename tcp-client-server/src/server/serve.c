@@ -1,20 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdbool.h>
-
-#include <errno.h>
-#include <ctype.h>
-#include <poll.h>
-#include <arpa/inet.h>
-#include <netinet/tcp.h>
-#include <unistd.h>
-
-#include <sys/poll.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-
-#include "../lib/lib_tcp_utils.h"
 #include "server.h"
 
 int main(int argc, char const *argv[])
@@ -63,9 +46,16 @@ int main(int argc, char const *argv[])
     client_database *c_db = malloc(sizeof(client_database));
     c_db->clients_information = NULL;
     c_db->nr_clients = 0;
+    c_db->exsitent_topics = NULL;
+    c_db->nr_topics = 0;
+
+    bool exit_value = false;
 
     while (true)
     {
+        if (exit_value)
+            break;
+
         int nr_events = poll(poll_fds, nr_fds, -1);
         DIE(nr_events < 0, "Poll");
 
@@ -76,57 +66,37 @@ int main(int argc, char const *argv[])
                 if (poll_fds[i].fd == STDIN_FILENO)
                 {
                     char buff[MAX_LEN_BUFF];
-                    fgets(buff, MAX_LEN_BUFF, stdin);
+                    if (!fgets(buff, MAX_LEN_BUFF, stdin))
+                        DIE(true, "An fgets error");
 
                     if (isExit(buff))
                     {
-                        // TODO Destroy c_db
-                        destory_poll(poll_fds, nr_fds);
-                        exit(EXIT_SUCCESS);
+                        exit_value = true;
+                        break;
                     }
-
-                    break;
                 }
                 else if (poll_fds[i].fd == tcp_socket)
                 {
-                    struct sockaddr_in cli_addr;
-                    news_packet recv_packet;
-
-                    socklen_t cli_len = sizeof(cli_addr);
-                    int newsockfd = accept(tcp_socket, (struct sockaddr *)&cli_addr, &cli_len);
-
-                    rc = recv(newsockfd, (void *)&recv_packet, sizeof(recv_packet), 0);
-                    DIE(rc < -1, "Recive tcp listen fd");
-
-                    if (connect_client(c_db, recv_packet.un.req.id, newsockfd))
-                    {
-                        poll_fds = add_to_poll(poll_fds, newsockfd, &nr_fds);
-                        printf("New client %s connected from %s:%hu.\n",
-                               recv_packet.un.req.id, inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
-                    }
-                    else
-                    {
-                        close(newsockfd);
-                        printf("Client %s already connected.\n", recv_packet.un.req.id);
-                    }
-                    break;
+                    connect_tcp_client_to_server(tcp_socket, c_db, &nr_fds, &poll_fds);
                 }
                 else if (poll_fds[i].fd == udp_socket)
                 {
                     source_packet recv_packet;
+                    memset(&recv_packet, 0, sizeof(source_packet));
                     struct sockaddr_in udp_client_addr;
                     socklen_t addr_len = sizeof(udp_client_addr);
 
-                    recvfrom(udp_socket, (void *)&recv_packet, sizeof(source_packet), 0, (struct sockaddr *)&udp_client_addr, &addr_len);
+                    rc = recvfrom(udp_socket, (void *)&recv_packet, sizeof(source_packet), 0, (struct sockaddr *)&udp_client_addr, &addr_len);
+                    DIE(rc < 0, "Receive UDP packet");
 
                     news_packet send_packet;
                     memset(&send_packet, 0, sizeof(news_packet));
-                    send_packet.type = NEWS_REP;
-                    memcpy(&send_packet.topic, &recv_packet.topic, sizeof(send_packet.topic));
-                    send_packet.un.rep.type = recv_packet.content.type;
+                    send_packet.packet_type = NEWS_PACK_REP;
+                    uint16_t size_packet = sizeof(recv_packet) + sizeof(udp_client_addr.sin_port) + sizeof(udp_client_addr.sin_addr);
+                    send_packet.size = htons(size_packet);
                     send_packet.un.rep.ip_udp = udp_client_addr.sin_addr;
                     send_packet.un.rep.port_udp = udp_client_addr.sin_port;
-                    memcpy(&send_packet.un.rep.messege, &recv_packet.content.payload, sizeof(recv_packet.content.payload));
+                    memcpy(&send_packet.un.rep.content, &recv_packet, sizeof(recv_packet));
 
                     struct topic *topic_addr = search_topic(c_db, recv_packet.topic);
 
@@ -138,21 +108,19 @@ int main(int argc, char const *argv[])
                         int pos_in_cli_vec = topic_addr->subscribers[j].pos_in_client_vector;
                         if (c_db->clients_information[pos_in_cli_vec].active)
                         {
-                            send(c_db->clients_information[pos_in_cli_vec].fd, &send_packet, sizeof(send_packet), 0);
+                            send_tcp_packet(c_db->clients_information[pos_in_cli_vec].fd, (char *)&send_packet,
+                                            NEWS_PACKET_HEADER_SIZE + size_packet);
                         }
                         else if (topic_addr->subscribers[j].sf)
                         {
                             store_packet(&topic_addr->subscribers[j], &send_packet);
                         }
-
                     }
-                    break;
-
                 }
                 else
                 {
                     news_packet recv_packet;
-                    rc = recv(poll_fds[i].fd, &recv_packet, sizeof(recv_packet), 0);
+                    rc = recv_tcp_packet(poll_fds[i].fd, (char *)&recv_packet, NEWS_PACKET_HEADER_SIZE);
                     DIE(rc < 0, "Receive from client");
 
                     if (rc == 0)
@@ -162,42 +130,28 @@ int main(int argc, char const *argv[])
                     }
                     else
                     {
-
-                        if (recv_packet.type == NEWS_REQ)
+                        rc = recv_tcp_packet(poll_fds[i].fd, (char *)&recv_packet.un, recv_packet.size);
+                        if (recv_packet.packet_type == NEWS_PACK_REQ)
                         {
-                            if (recv_packet.un.req.type_action == NEWS_SUB)
-                            {
-                                struct topic *topic_addr = search_topic(c_db, recv_packet.topic);
-                                if (!topic_addr)
-                                {
-                                    create_topic(c_db, &recv_packet);
-                                    topic_addr = &c_db->exsitent_topics[c_db->nr_topics - 1];
-                                }
-
-                                int pos;
-                                search_client(c_db, poll_fds[i].fd, &pos);
-
-                                add_client_to_topic(topic_addr, pos, &recv_packet);
-
-                                // Ack sender for subscribing
-                                send(poll_fds[i].fd, &recv_packet, sizeof(recv_packet), 0);
-                            }
-                            else if (recv_packet.un.req.type_action == NEWS_UNSUB)
-                            {
-                                struct topic *topic_addr = search_topic(c_db, recv_packet.topic);
-                                if (topic_addr)
-                                {
-                                    int pos;
-                                    search_client(c_db, poll_fds[i].fd, &pos);
-                                    remove_client_from_topic(topic_addr, pos);
-                                }
-                                send(poll_fds[i].fd, &recv_packet, sizeof(recv_packet), 0);
-                            }
+                            parse_and_exec_client_request(c_db, &recv_packet, poll_fds[i].fd);
                         }
                     }
-                    break;
                 }
             }
         }
     }
+
+    for (int i = 0; i < c_db->nr_topics; i++)
+    {
+        for (int j = 0; j < c_db->exsitent_topics[i].nr_subscribers; j++)
+        {
+            destory_list(&c_db->exsitent_topics[i].subscribers[j]);
+        }
+        free(c_db->exsitent_topics[i].subscribers);
+    }
+    free(c_db->exsitent_topics);
+    free(c_db->clients_information);
+    free(c_db);
+    destory_poll(poll_fds, nr_fds);
+    exit(EXIT_SUCCESS);
 }

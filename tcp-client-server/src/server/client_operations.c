@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 
-bool connect_client(client_database *c_db, char id[10], int fd)
+bool add_client_to_client_list(client_database *c_db, char id[10], int fd)
 {
 
     if (!c_db->clients_information)

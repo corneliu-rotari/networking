@@ -22,13 +22,6 @@ int main(int argc, char const *argv[])
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);
 
     int rc;
-    news_packet send_packet;
-    memset(&send_packet, 0, sizeof(news_packet));
-
-    // Create request packet
-    send_packet.type = NEWS_REQ;
-    memcpy(send_packet.un.req.id, argv[1], strlen(argv[1]) + 1);
-
     uint16_t server_port;
     rc = sscanf(argv[3], "%hu", &server_port);
     DIE(rc != 1, "Port invalid");
@@ -48,7 +41,13 @@ int main(int argc, char const *argv[])
     rc = connect(serverfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
     DIE(rc < 0, "Connect");
 
-    rc = send(serverfd, (void *)&send_packet, sizeof(send_packet), 0);
+    news_packet send_packet;
+    memset(&send_packet, 0, sizeof(news_packet));
+    send_packet.packet_type = NEWS_PACK_ID;
+    send_packet.size = strlen(argv[1]);
+    memcpy(send_packet.un.id, argv[1], send_packet.size);
+
+    rc = send_tcp_packet(serverfd, (char *)&send_packet, NEWS_PACKET_HEADER_SIZE + send_packet.size);
     DIE(rc < 0, "Send packet");
 
     struct pollfd *poll_fds = init_poll(&nr_fds);
@@ -62,7 +61,9 @@ int main(int argc, char const *argv[])
         if (poll_fds[0].revents & POLLIN)
         {
             char buff[MAX_LEN_BUFF];
-            fgets(buff, MAX_LEN_BUFF, stdin);
+            if (!fgets(buff, MAX_LEN_BUFF, stdin))
+                DIE(true, "An fgets error");
+
             char command[20];
             char topic[51] = {'\0'};
 
@@ -71,23 +72,41 @@ int main(int argc, char const *argv[])
             if (isExit(command))
                 break;
 
+            // Create request packet
+            news_packet send_packet;
+            memset(&send_packet, 0, sizeof(news_packet));
+            send_packet.packet_type = NEWS_PACK_REQ;
+            send_packet.size = sizeof(send_packet.un.req);
+
             if (isSubscribe(command))
             {
                 sscanf(buff, "%s %s %hhu", command, topic, &send_packet.un.req.sf);
-                memcpy(send_packet.topic, topic, 50);
-                send_packet.un.req.type_action = NEWS_SUB;
-                send(serverfd, (void *)&send_packet, sizeof(send_packet), 0);
-                recv(serverfd, &send_packet, sizeof(send_packet),0);
-                printf("Subscribed to topic.\n");
+                memcpy(send_packet.un.req.topic, topic, 50);
+                send_packet.un.req.type_action = NEWS_TYPE_SUB;
+                rc = send_tcp_packet(serverfd, (char *)&send_packet, NEWS_PACKET_HEADER_SIZE + send_packet.size);
+                DIE(rc < 0, "Send sub");
+
+                news_packet recv_packet;
+                rc = recv_tcp_packet(serverfd, (char *)&recv_packet, NEWS_PACKET_HEADER_SIZE);
+                DIE(rc < 0, "Recv ack sub");
+
+                if (recv_packet.packet_type == NEWS_PACK_ACK)
+                    printf("Subscribed to topic.\n");
             }
             else if (isUnsubscribe(buff))
             {
                 sscanf(buff, "%s %s", command, topic);
-                memcpy(send_packet.topic, topic, 50);
-                send_packet.un.req.type_action = NEWS_UNSUB;
-                send(serverfd, (void *)&send_packet, sizeof(send_packet), 0);
-                
-                printf("Unsubscribed from topic.\n");
+                memcpy(send_packet.un.req.topic, topic, 50);
+                send_packet.un.req.type_action = NEWS_TYPE_UNSUB;
+                rc = send_tcp_packet(serverfd, (char *)&send_packet, NEWS_PACKET_HEADER_SIZE + send_packet.size);
+                DIE(rc < 0, "Send unsub");
+
+                news_packet recv_packet;
+                rc = recv_tcp_packet(serverfd, (char *)&recv_packet, NEWS_PACKET_HEADER_SIZE);
+                DIE(rc < 0, "Recv ack unsub");
+
+                if (recv_packet.packet_type == NEWS_PACK_ACK)
+                    printf("Unsubscribed from topic.\n");
             }
             else
             {
@@ -98,63 +117,73 @@ int main(int argc, char const *argv[])
         else
         {
             news_packet recv_packet;
-            rc = recv(serverfd, (void *)&recv_packet, sizeof(recv_packet), 0);
+            rc = recv_tcp_packet(serverfd, (char *)&recv_packet, NEWS_PACKET_HEADER_SIZE);
             DIE(rc < 0, "Recived from server");
 
             if (rc == 0)
                 break;
             else
             {
-                if (recv_packet.type == NEWS_REP)
+                if (recv_packet.packet_type == NEWS_PACK_REP)
                 {
+                    rc = recv_tcp_packet(serverfd, (char *)&recv_packet.un, ntohs(recv_packet.size));
+                    DIE(rc < 0, "Recived from server");
+
                     printf("%s:%hu - %s - %s - ",
                            inet_ntoa(recv_packet.un.rep.ip_udp), ntohs(recv_packet.un.rep.port_udp),
-                           recv_packet.topic, convert_type(recv_packet.un.rep.type));
+                           recv_packet.un.rep.content.topic, convert_type(recv_packet.un.rep.content.type));
 
-                    switch (recv_packet.un.rep.type)
+                    switch (recv_packet.un.rep.content.type)
                     {
                     case 0:
                     {
-                        uint8_t sign = *(uint8_t *)recv_packet.un.rep.messege;
+                        uint8_t sign = *(uint8_t *)recv_packet.un.rep.content.payload;
+                        uint32_t number = 0;
+                        memcpy(&number, ((char*)recv_packet.un.rep.content.payload + 1), sizeof(uint32_t));
+
                         if (sign == 1)
                             printf("-");
-                        printf("%u\n", ntohl(*((uint32_t *)(recv_packet.un.rep.messege + 1))));
+                        printf("%u\n", ntohl(number));
                         break;
                     }
                     case 1:
                     {
-                        uint16_t short_real = ntohs(*(uint16_t *)recv_packet.un.rep.messege);
+                        uint16_t short_real = ntohs(*(uint16_t *)recv_packet.un.rep.content.payload);
                         printf("%hu.", short_real / 100);
                         uint16_t right = short_real % 100;
                         if (right < 10)
                             printf("0");
-                        printf("%hu\n",right);
+                        printf("%hu\n", right);
                         break;
                     }
                     case 2:
                     {
-                        uint8_t sign = *(uint8_t *)recv_packet.un.rep.messege;
-                        uint32_t number = ntohl(*(uint32_t*) (recv_packet.un.rep.messege + 1));
-                        uint8_t power = *(recv_packet.un.rep.messege+ sizeof(uint32_t)  + 1);
-                        int mult_ten = (int) pow(10, power);
+                        uint8_t sign = *(uint8_t *)recv_packet.un.rep.content.payload;
+                        uint32_t number = ntohl(*(uint32_t *)(recv_packet.un.rep.content.payload + 1));
+                        uint8_t power = *(recv_packet.un.rep.content.payload + sizeof(uint32_t) + 1);
+                        int mult_ten = (int)pow(10, power);
                         int left = number / mult_ten;
                         int right = number % mult_ten;
-                        
+
                         if (sign == 1)
                             printf("-");
                         printf("%d.", left);
 
-                        if (right < 10)
-                            printf("00");
-                        else if (right < 100)
+                        int aux = right;
+
+                        while (aux * 10 < mult_ten && aux != 0)
+                        {
                             printf("0");
-                        
-                        printf("%d\n",right);
+                            aux *= 10;
+                        }
+
+                        printf("%d\n", right);
 
                         break;
                     }
-                    case 3: {
-                        printf("%s\n", recv_packet.un.rep.messege);
+                    case 3:
+                    {
+                        printf("%s\n", recv_packet.un.rep.content.payload);
                         break;
                     }
                     default:

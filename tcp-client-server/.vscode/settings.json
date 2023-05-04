@@ -3,6 +3,7 @@
         "socket.h": "c",
         "lib_tcp_utils.h": "c",
         "server.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "tcp.h": "c"
     }
 }
