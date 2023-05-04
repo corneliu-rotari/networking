@@ -70,4 +70,3 @@ void parse_and_exec_client_request(client_database *c_db, news_packet *recv_pack
 
     send_tcp_packet(clinet_fd, (char *)&send_packet, NEWS_PACKET_HEADER_SIZE);
 }
-

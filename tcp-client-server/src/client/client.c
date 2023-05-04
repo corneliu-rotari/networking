@@ -159,7 +159,9 @@ int main(int argc, char const *argv[])
                     case 2:
                     {
                         uint8_t sign = *(uint8_t *)recv_packet.un.rep.content.payload;
-                        uint32_t number = ntohl(*(uint32_t *)(recv_packet.un.rep.content.payload + 1));
+                        uint32_t number_net = 0, number = 0;
+                        memcpy(&number_net, ((char*)recv_packet.un.rep.content.payload + 1), sizeof(uint32_t));
+                        number = ntohl(number_net);
                         uint8_t power = *(recv_packet.un.rep.content.payload + sizeof(uint32_t) + 1);
                         int mult_ten = (int)pow(10, power);
                         int left = number / mult_ten;

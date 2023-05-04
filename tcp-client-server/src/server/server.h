@@ -46,7 +46,6 @@ typedef struct client_database
 
 void connect_tcp_client_to_server(int tcp_socket, client_database *c_db, int *nr_fds_addr, struct pollfd **poll_fds_addr);
 void parse_and_exec_client_request(client_database *c_db, news_packet * recv_packet_addr, int clinet_fd);
-uint16_t create_news_from_source(news_packet* send_packet, int udp_socket);
 
 bool add_client_to_client_list(client_database *c_db, char id[10], int fd);
 client_info *search_client(client_database *c_db, int fd, int* pos);
