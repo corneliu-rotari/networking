@@ -70,3 +70,44 @@ void parse_and_exec_client_request(client_database *c_db, news_packet *recv_pack
 
     send_tcp_packet(clinet_fd, (char *)&send_packet, NEWS_PACKET_HEADER_SIZE);
 }
+
+void recv_udp_news(client_database *c_db, int udp_socket)
+{
+    int rc;
+    source_packet recv_packet;
+    memset(&recv_packet, 0, sizeof(source_packet));
+    struct sockaddr_in udp_client_addr;
+    socklen_t addr_len = sizeof(udp_client_addr);
+
+    rc = recvfrom(udp_socket, (void *)&recv_packet, sizeof(source_packet), 0, (struct sockaddr *)&udp_client_addr, &addr_len);
+    DIE(rc < 0, "Receive UDP packet");
+
+    news_packet send_packet;
+    memset(&send_packet, 0, sizeof(news_packet));
+    send_packet.packet_type = NEWS_PACK_REP;
+    uint16_t size_packet = sizeof(recv_packet) + sizeof(udp_client_addr.sin_port) + sizeof(udp_client_addr.sin_addr);
+    send_packet.size = htons(size_packet);
+    send_packet.un.rep.ip_udp = udp_client_addr.sin_addr;
+    send_packet.un.rep.port_udp = udp_client_addr.sin_port;
+    memcpy(&send_packet.un.rep.content, &recv_packet, rc);
+
+    struct topic *topic_addr = search_topic(c_db, recv_packet.topic);
+
+    if (!topic_addr)
+        return;
+
+    for (int j = 0; j < topic_addr->nr_subscribers; j++)
+    {
+        int pos_in_cli_vec = topic_addr->subscribers[j].pos_in_client_vector;
+        if (c_db->clients_information[pos_in_cli_vec].active)
+        {
+            rc = send_tcp_packet(c_db->clients_information[pos_in_cli_vec].fd, (char *)&send_packet,
+                                 NEWS_PACKET_HEADER_SIZE + size_packet);
+            DIE(rc < 0, "Send packet to subscriber");
+        }
+        else if (topic_addr->subscribers[j].sf)
+        {
+            store_packet(&topic_addr->subscribers[j], &send_packet);
+        }
+    }
+}
