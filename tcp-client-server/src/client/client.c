@@ -65,7 +65,8 @@ int main(int argc, char const *argv[])
                 DIE(true, "An fgets error");
 
             char command[20];
-            char topic[51] = {'\0'};
+            char topic[51];
+            memset(topic, 0, 50);
 
             sscanf(buff, "%s", command);
 

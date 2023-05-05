@@ -7,10 +7,7 @@ struct topic *search_topic(client_database *c_db, char name[50])
 {
     for (int i = 0; i < c_db->nr_topics; i++)
     {
-        int len_name = strlen(name);
-        int len_topic = strlen(c_db->exsitent_topics[i].topic);
-        if (strncmp(c_db->exsitent_topics[i].topic, name, len_name) == 0 &&
-            len_name == len_topic)
+        if (strncmp(c_db->exsitent_topics[i].topic, name, 50) == 0)
         {
             return &c_db->exsitent_topics[i];
         }
@@ -28,6 +25,7 @@ void create_topic(client_database *c_db, news_packet *info_addr)
     else
         c_db->exsitent_topics = realloc(c_db->exsitent_topics, topic_size * (c_db->nr_topics + 1));
 
+    memset(c_db->exsitent_topics[c_db->nr_topics].topic, 0, 51);
     memcpy(c_db->exsitent_topics[c_db->nr_topics].topic, info_addr->un.req.topic, 50);
     c_db->exsitent_topics[c_db->nr_topics].nr_subscribers = 0;
     c_db->exsitent_topics[c_db->nr_topics].subscribers = NULL;

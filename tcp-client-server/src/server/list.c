@@ -52,7 +52,7 @@ void forward_packet(struct topics_clients *cli_info, int fd)
     while (newNode != NULL)
     {
         send_tcp_packet(fd, (char *)&newNode->messege, 
-            NEWS_PACKET_HEADER_SIZE + newNode->messege.size);
+            NEWS_PACKET_HEADER_SIZE + ntohs(newNode->messege.size));
         newNode = newNode->next;
     }
     destory_list(cli_info);

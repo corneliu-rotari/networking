@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -g -Wno-error=unused-variable -fPIC -O2 -fsanitize=undefined
+CFLAGS=-Wall -Wextra -g -Werror -Wno-error=unused-variable -fPIC -O2 -fsanitize=undefined -fsanitize=address
 LIBFLAGS=-lm
 SRC=src
 SER=$(wildcard $(SRC)/server/*.c)
