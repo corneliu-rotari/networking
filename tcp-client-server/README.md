@@ -23,6 +23,9 @@
 +----------------------------------------
 ```
 
+The messeges are sent at first the type and size and after that the actual payload.
+Everything is in a union to easly cast in the programm.
+
 ### Type of messege
 
 **`0` ID** - Packet sent by the user with his id.
@@ -39,4 +42,21 @@ The payload is information that can vary from 0 to 1500 bytes, depening of the t
 
 ## Server
 
+The server is using 2 static sockets for tcp listening and udp reciving.
+Multiplexing is being created using `poll.h`.
+The memory is stored into data structre where everything is connected.
+The topic is created only when a tcp subscriber has subscribed.
+All the topics are ignored if none of the subscribers are waiting for a response.
+The servers prints if the clients connect or to disconnect.
+
 ## Subscriber
+
+At first the client connects and sends it's id to the server, and awaits and ack response.
+Parses the input and sends the request to the server and awaits for a response.
+The multiplexing part is implemented with `poll.h`, for mannaging input and server messages.
+Every type of messages are parsed by casting.
+
+## Common
+
+`DIE` - Macro for checking errors and exiting with failure.
+`recv`, `send` and the application structre are adapted from laboratory.

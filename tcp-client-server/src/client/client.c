@@ -1,23 +1,23 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <errno.h>
-#include <ctype.h>
-#include <poll.h>
 #include <arpa/inet.h>
-#include <unistd.h>
+#include <ctype.h>
+#include <errno.h>
 #include <math.h>
+#include <poll.h>
+#include <unistd.h>
 
 #include <sys/poll.h>
-#include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/tcp.h>
+#include <sys/types.h>
 
 #include "../lib/lib_tcp_utils.h"
 
-int main(int argc, char const *argv[])
-{
+int main(int argc, char const *argv[]) {
     DIE(argc != 4, "[Usage] : ./subscriber <ID_CLIENT> <IP_SERVER> <PORT_SERVER>\n");
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);
 
@@ -29,6 +29,10 @@ int main(int argc, char const *argv[])
     // Create socket to communicate with the server
     int serverfd = socket(AF_INET, SOCK_STREAM, 0);
     DIE(serverfd < 0, "Socket");
+
+    int enable = 1;
+    rc = setsockopt(serverfd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+    DIE(rc < 0, "Optiuni tcp");
 
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(struct sockaddr_in));
@@ -53,13 +57,11 @@ int main(int argc, char const *argv[])
     struct pollfd *poll_fds = init_poll(&nr_fds);
     poll_fds = add_to_poll(poll_fds, serverfd, &nr_fds);
 
-    while (true)
-    {
+    while (true) {
         rc = poll(poll_fds, nr_fds, -1);
         DIE(rc < 0, "Poll");
 
-        if (poll_fds[0].revents & POLLIN)
-        {
+        if (poll_fds[0].revents & POLLIN) {
             char buff[MAX_LEN_BUFF];
             if (!fgets(buff, MAX_LEN_BUFF, stdin))
                 DIE(true, "An fgets error");
@@ -79,8 +81,7 @@ int main(int argc, char const *argv[])
             send_packet.packet_type = NEWS_PACK_REQ;
             send_packet.size = sizeof(send_packet.un.req);
 
-            if (isSubscribe(command))
-            {
+            if (isSubscribe(command)) {
                 sscanf(buff, "%s %s %hhu", command, topic, &send_packet.un.req.sf);
                 memcpy(send_packet.un.req.topic, topic, 50);
                 send_packet.un.req.type_action = NEWS_TYPE_SUB;
@@ -93,9 +94,7 @@ int main(int argc, char const *argv[])
 
                 if (recv_packet.packet_type == NEWS_PACK_ACK)
                     printf("Subscribed to topic.\n");
-            }
-            else if (isUnsubscribe(buff))
-            {
+            } else if (isUnsubscribe(buff)) {
                 sscanf(buff, "%s %s", command, topic);
                 memcpy(send_packet.un.req.topic, topic, 50);
                 send_packet.un.req.type_action = NEWS_TYPE_UNSUB;
@@ -108,25 +107,19 @@ int main(int argc, char const *argv[])
 
                 if (recv_packet.packet_type == NEWS_PACK_ACK)
                     printf("Unsubscribed from topic.\n");
-            }
-            else
-            {
+            } else {
                 printf("Invalid command. Try again\n");
                 continue;
             }
-        }
-        else
-        {
+        } else {
             news_packet recv_packet;
             rc = recv_tcp_packet(serverfd, (char *)&recv_packet, NEWS_PACKET_HEADER_SIZE);
             DIE(rc < 0, "Recived from server");
 
             if (rc == 0)
                 break;
-            else
-            {
-                if (recv_packet.packet_type == NEWS_PACK_REP)
-                {
+            else {
+                if (recv_packet.packet_type == NEWS_PACK_REP) {
                     rc = recv_tcp_packet(serverfd, (char *)&recv_packet.un, ntohs(recv_packet.size));
                     DIE(rc < 0, "Recived from server");
 
@@ -134,21 +127,18 @@ int main(int argc, char const *argv[])
                            inet_ntoa(recv_packet.un.rep.ip_udp), ntohs(recv_packet.un.rep.port_udp),
                            recv_packet.un.rep.content.topic, convert_type(recv_packet.un.rep.content.type));
 
-                    switch (recv_packet.un.rep.content.type)
-                    {
-                    case 0:
-                    {
+                    switch (recv_packet.un.rep.content.type) {
+                    case 0: {
                         uint8_t sign = *(uint8_t *)recv_packet.un.rep.content.payload;
                         uint32_t number = 0;
-                        memcpy(&number, ((char*)recv_packet.un.rep.content.payload + 1), sizeof(uint32_t));
+                        memcpy(&number, ((char *)recv_packet.un.rep.content.payload + 1), sizeof(uint32_t));
 
                         if (sign == 1)
                             printf("-");
                         printf("%u\n", ntohl(number));
                         break;
                     }
-                    case 1:
-                    {
+                    case 1: {
                         uint16_t short_real = ntohs(*(uint16_t *)recv_packet.un.rep.content.payload);
                         printf("%hu.", short_real / 100);
                         uint16_t right = short_real % 100;
@@ -157,11 +147,10 @@ int main(int argc, char const *argv[])
                         printf("%hu\n", right);
                         break;
                     }
-                    case 2:
-                    {
+                    case 2: {
                         uint8_t sign = *(uint8_t *)recv_packet.un.rep.content.payload;
                         uint32_t number_net = 0, number = 0;
-                        memcpy(&number_net, ((char*)recv_packet.un.rep.content.payload + 1), sizeof(uint32_t));
+                        memcpy(&number_net, ((char *)recv_packet.un.rep.content.payload + 1), sizeof(uint32_t));
                         number = ntohl(number_net);
                         uint8_t power = *(recv_packet.un.rep.content.payload + sizeof(uint32_t) + 1);
                         int mult_ten = (int)pow(10, power);
@@ -174,8 +163,7 @@ int main(int argc, char const *argv[])
 
                         int aux = right;
 
-                        while (aux * 10 < mult_ten && aux != 0)
-                        {
+                        while (aux * 10 < mult_ten && aux != 0) {
                             printf("0");
                             aux *= 10;
                         }
@@ -184,8 +172,7 @@ int main(int argc, char const *argv[])
 
                         break;
                     }
-                    case 3:
-                    {
+                    case 3: {
                         printf("%s\n", recv_packet.un.rep.content.payload);
                         break;
                     }
