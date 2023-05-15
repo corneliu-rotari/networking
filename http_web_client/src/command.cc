@@ -45,20 +45,40 @@ void register_user(string ip, string access_route)
 
     if (http_return_code == 201)
     {
-        cout << "Registered successfully" << endl;
+        cout << "Registered successfully\n"
+             << endl;
     }
 
     free(response);
 }
 
-void login_user(string ip, string access_route)
+string login_user(string ip, string access_route)
 {
     char *response = auth_user(ip, access_route);
-    cout << get_http_code(string(response)) << endl;
+
+    string resp_str = string(response);
+    string to_ret = "";
+    int http_return_code = get_http_code(resp_str);
+
+    if (is_http_error(http_return_code))
+    {
+        json error = get_http_error_msg(resp_str);
+        io_print_error(error["error"]);
+    }
+    else if (http_return_code == 200)
+    {
+        int cookie_pos = resp_str.find(' ', resp_str.find("Set-Cookie:")) + 1;
+        to_ret = resp_str.substr(cookie_pos, resp_str.find("\r\n", cookie_pos) - cookie_pos);
+
+        cout << "The User was logged in\n"
+             << endl;
+    }
+
     free(response);
+    return to_ret;
 }
 
-void logout_user(int fd, string ip, string access_route)
+void logout_user(string ip, string access_route)
 {
 }
 
@@ -72,7 +92,11 @@ void get_books(int fd, string ip, string access_route)
 
 void get_book(int fd, string ip, string access_route)
 {
-    string id = io_get_id();
+    json id = io_get_id();
+    if (empty(id))
+    {
+        return;
+    }
 }
 
 void add_book(int fd, string ip, string access_route)
@@ -81,5 +105,9 @@ void add_book(int fd, string ip, string access_route)
 
 void delete_book(int fd, string ip, string access_route)
 {
-    string id = io_get_id();
+    json id = io_get_id();
+    if (empty(id))
+    {
+        return;
+    }
 }

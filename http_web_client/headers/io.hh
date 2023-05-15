@@ -11,8 +11,8 @@ using namespace std;
 // Input
 
 json io_get_user_info(void);
-string io_get_id(void);
-void io_get_book(void);
+json io_get_id(void);
+json io_get_book(void);
 
 // Output
 

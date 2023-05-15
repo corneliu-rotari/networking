@@ -5,10 +5,10 @@
 
 using namespace std;
 
-void login_user(string ip, string access_route);
+string login_user(string ip, string access_route);
 void register_user(string ip, string access_route);
+void logout_user(string ip, string access_route);
 
-void logout_user(int fd, string ip, string access_route);
 void enter_library(int fd, string ip, string access_route);
 void get_books(int fd, string ip, string access_route);
 void get_book(int fd, string ip, string access_route);

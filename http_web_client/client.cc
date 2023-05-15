@@ -24,20 +24,29 @@ int main(int argc, char *argv[])
     string user_input = "";
     getline(cin, user_input);
 
+    string login_cookie = "";
+
     while (user_input != "exit")
     {
-
         if (user_input == "register")
         {
             register_user(ip, access_route + "/auth/register");
         }
         else if (user_input == "login")
         {
-            login_user(ip, access_route + "/auth/login");
+            login_cookie = login_user(ip, access_route + "/auth/login");
         }
         else if (user_input == "logout")
         {
-            logout_user(sockfd, ip, access_route + "/auth/logout");
+            if (login_cookie != "")
+            {
+                logout_user(ip, access_route + "/auth/logout");
+                login_cookie = "";
+            }
+            else
+            {
+                io_print_error("User not logged in");
+            }
         }
         else if (user_input == "enter_library")
         {
