@@ -25,6 +25,7 @@ int main(int argc, char *argv[])
     getline(cin, user_input);
 
     string login_cookie = "";
+    string jwt_token = "";
 
     while (user_input != "exit")
     {
@@ -34,39 +35,38 @@ int main(int argc, char *argv[])
         }
         else if (user_input == "login")
         {
-            login_cookie = login_user(ip, access_route + "/auth/login");
-        }
-        else if (user_input == "logout")
-        {
-            if (login_cookie != "")
+            if (login_cookie == "")
             {
-                logout_user(ip, access_route + "/auth/logout");
-                login_cookie = "";
+                login_cookie = login_user(ip, access_route + "/auth/login");
             }
             else
             {
-                io_print_error("User not logged in");
+                io_print_error("You already logged in, please logout to login again");
             }
+        }
+        else if (user_input == "logout")
+        {
+            login_cookie = logout_user(ip, access_route + "/auth/logout", login_cookie);
         }
         else if (user_input == "enter_library")
         {
-            enter_library(sockfd, ip, access_route + "/library/access");
+            jwt_token = enter_library(ip, access_route + "/library/access", login_cookie);
         }
         else if (user_input == "get_books")
         {
-            get_books(sockfd, ip, access_route + "/library/books");
+            get_books(ip, access_route + "/library/books", jwt_token);
         }
         else if (user_input == "get_book")
         {
-            get_book(sockfd, ip, access_route + "/library/books");
+            get_book(ip, access_route + "/library/books", jwt_token);
         }
         else if (user_input == "add_book")
         {
-            add_book(sockfd, ip, access_route + "/library/books");
+            add_book(ip, access_route + "/library/books", jwt_token);
         }
         else if (user_input == "delete_book")
         {
-            delete_book(sockfd, ip, access_route + "/library/books");
+            delete_book(ip, access_route + "/library/books", jwt_token);
         }
         else
             io_print_error("Invalid command, try again.");

@@ -11,11 +11,12 @@ using namespace std;
 // Input
 
 json io_get_user_info(void);
-json io_get_id(void);
+string io_get_id(void);
 json io_get_book(void);
 
 // Output
 
-void io_print_error(string content);
+void io_print_error(string content, int code);
+void io_print_success(string content, int code = -1);
 
 #endif
