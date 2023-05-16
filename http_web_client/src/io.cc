@@ -1,4 +1,5 @@
 #include "../headers/io.hh"
+#include <iostream>
 
 string promt(string for_what)
 {
@@ -11,19 +12,24 @@ string promt(string for_what)
 json io_get_user_info(void)
 {
     json j;
-    j["username"] = promt("username");
-    j["password"] = promt("password"); // maybe add getpass
+    string usr = promt("username");
+    string pswd = promt("password");
+    if (usr.find(' ') != string::npos && pswd.find(' ') != string::npos)
+    {
+        j["password"] = pswd;
+        j["username"] = usr;
+    }
     return j;
 }
 
 bool is_only_digits(string str)
 {
-    return str.find_first_not_of("0123456789") == std::string::npos;
+    return str.find_first_not_of("0123456789") == string::npos;
 }
 
 bool has_a_digit(string str)
 {
-    return str.find_first_of("0123456789") != std::string::npos;
+    return str.find_first_of("0123456789") != string::npos;
 }
 
 string io_get_id(void)
@@ -78,7 +84,7 @@ void io_print_success(string content, int code)
     {
         cout << " " << code;
     }
-    
+
     cout << "] : " << content << endl
          << endl;
 }

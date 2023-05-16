@@ -22,7 +22,5 @@ void send_to_server(int sockfd, char *message);
 // receives and returns the message from a server
 char *receive_from_server(int sockfd);
 
-// extracts and returns a JSON from a server response
-char *basic_extract_json_response(char *str);
 
 #endif

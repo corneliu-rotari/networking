@@ -46,7 +46,8 @@ int main(int argc, char *argv[])
         else if (user_input == "logout")
         {
             login_cookie = logout_user(ip, access_route + "/auth/logout", login_cookie);
-            if (login_cookie == "") {
+            if (login_cookie == "")
+            {
                 jwt_token = "";
             }
         }
@@ -56,19 +57,23 @@ int main(int argc, char *argv[])
         }
         else if (user_input == "get_books")
         {
-            get_books(ip, access_route + "/library/books", jwt_token);
+            jwt_token != "" ? get_books(ip, access_route + "/library/books", jwt_token)
+                            : io_print_error("Invalid command, you have not entered the library.");
         }
         else if (user_input == "get_book")
         {
-            get_book(ip, access_route + "/library/books", jwt_token);
+            jwt_token != "" ? get_book(ip, access_route + "/library/books", jwt_token)
+                            : io_print_error("Invalid command, you have not entered the library.");
         }
         else if (user_input == "add_book")
         {
-            add_book(ip, access_route + "/library/books", jwt_token);
+            jwt_token != "" ? add_book(ip, access_route + "/library/books", jwt_token)
+                            : io_print_error("Invalid command, you have not entered the library.");
         }
         else if (user_input == "delete_book")
         {
-            delete_book(ip, access_route + "/library/books", jwt_token);
+            jwt_token != "" ? delete_book(ip, access_route + "/library/books", jwt_token)
+                            : io_print_error("Invalid command, you have not entered the library.");
         }
         else
             io_print_error("Invalid command, try again.");

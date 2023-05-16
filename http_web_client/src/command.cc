@@ -6,6 +6,7 @@
 
 #include <sys/socket.h> /* socket, connect */
 #include <stdlib.h>
+#include <iostream>
 
 string send_request(string ip, string access, char *message)
 {
@@ -37,6 +38,11 @@ string send_request_with_cookie(string ip, string access, string cookie)
 string auth_user(string ip, string access_route)
 {
     json cred = io_get_user_info();
+    if (empty(cred))
+    {
+        return "";
+    }
+
     string cont_type = "application/json";
 
     char *message;
@@ -48,7 +54,6 @@ string auth_user(string ip, string access_route)
     return send_request(ip, access_route, message);
 }
 
-//  ---------------------------------------------------------
 
 void register_user(string ip, string access_route)
 {
@@ -64,6 +69,9 @@ void register_user(string ip, string access_route)
 string login_user(string ip, string access_route)
 {
     string response = auth_user(ip, access_route);
+    if (response == "") {
+        io_print_error("Credentials should not contain spaces");
+    }
 
     string to_ret = "";
     int http_return_code = get_http_code(response);
@@ -82,7 +90,8 @@ string login_user(string ip, string access_route)
 string logout_user(string ip, string access_route, string cookie)
 {
     string response = send_request_with_cookie(ip, access_route, cookie);
-    if (check_for_http_errors(response)) {
+    if (check_for_http_errors(response))
+    {
         io_print_success("You have been logged out", get_http_code(response));
         return "";
     }
@@ -116,6 +125,7 @@ void get_books(string ip, string access_route, string token)
             json book = *elem;
             cout << "[Id] : " << book["id"] << " [Title] : " << book["title"] << endl;
         }
+        cout << endl;
     }
 }
 
@@ -142,6 +152,7 @@ void get_book(string ip, string access_route, string token)
              << " [Publisher] : " << book["publisher"]
              << " [Genre] : " << book["genre"]
              << " [Page_count] : " << book["page_count"]
+             << endl
              << endl;
     }
 }

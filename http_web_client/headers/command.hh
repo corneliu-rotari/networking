@@ -1,7 +1,7 @@
 #ifndef _COMMANDS_
 #define _COMMANDS_
 #include <string>
-#include <iostream>
+#include <iosfwd>
 
 using namespace std;
 

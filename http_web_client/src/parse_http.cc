@@ -2,6 +2,11 @@
 
 int get_http_code(string response)
 {
+    if (response == "")
+    {
+        return 400;
+    }
+
     int code_pos = response.find(' ') + 1;
     string code = response.substr(code_pos, response.find(" ", code_pos));
     return stoi(code);
@@ -22,6 +27,7 @@ bool check_for_http_errors(string response)
 {
     int http_return_code = get_http_code(response);
     bool is_error = is_http_error(http_return_code);
+
     if (is_error)
     {
         json error = get_http_body_json(response);

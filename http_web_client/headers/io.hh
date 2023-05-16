@@ -2,8 +2,8 @@
 #define _INPUT_PARSER_
 
 #include <string>
+#include <iosfwd>
 #include "../headers/json.hpp"
-#include <iostream>
 
 using json = nlohmann::json;
 using namespace std;

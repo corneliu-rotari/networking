@@ -16,17 +16,17 @@ char *compute_get_request(char *host, char *url, char *token,
     char *message = (char *)calloc(BUFLEN, sizeof(char));
     char *line = (char *)calloc(LINELEN, sizeof(char));
 
-    // Step 1: write the method name, URL, request params (if any) and protocol type
+    // write the method name, URL, request params (if any) and protocol type
     sprintf(line, "GET %s HTTP/1.1", url);
 
     compute_message(message, line);
 
-    // Step 2: add the host
+    // add the host
     memset(line, 0, LINELEN);
     sprintf(line, "Host: %s", host);
     compute_message(message, line);
 
-    // Step 3 (optional): add headers and/or cookies, according to the protocol format
+    // (optional): add headers and/or cookies, according to the protocol format
     if (cookies != NULL)
     {
         for (int i = 0; i < cookies_count; i++)
@@ -43,7 +43,7 @@ char *compute_get_request(char *host, char *url, char *token,
         compute_message(message, line);
     }
     
-    // Step 4: add final new line
+    // add final new line
     compute_message(message, "");
     free(line);
     return message;
@@ -55,16 +55,16 @@ char *compute_post_request(char *host, char *url, char *content_type,
     char *message = (char *)calloc(BUFLEN, sizeof(char));
     char *line = (char *)calloc(LINELEN, sizeof(char));
 
-    // Step 1: write the method name, URL and protocol type
+    // write the method name, URL and protocol type
     sprintf(line, "POST %s HTTP/1.1", url);
     compute_message(message, line);
 
-    // Step 2: add the host
+    // add the host
     memset(line, 0, LINELEN);
     sprintf(line, "Host: %s", host);
     compute_message(message, line);
 
-    /* Step 3: add necessary headers (Content-Type and Content-Length are mandatory)
+    /* add necessary headers (Content-Type and Content-Length are mandatory)
             in order to write Content-Length you must first compute the message size
     */
     memset(line, 0, LINELEN);
@@ -75,7 +75,7 @@ char *compute_post_request(char *host, char *url, char *content_type,
     sprintf(line, "Content-Length: %ld", strlen(body));
     compute_message(message, line);
 
-    // Step 4 (optional): add cookies
+    // (optional): add cookies
     if (cookies != NULL)
     {
         for (int i = 0; i < cookies_count; i++)
@@ -85,10 +85,10 @@ char *compute_post_request(char *host, char *url, char *content_type,
             compute_message(message, line);
         }
     }
-    // Step 5: add new line at end of header
+    // add new line at end of header
     compute_message(message, "");
 
-    // Step 6: add the actual payload data
+    // add the actual payload data
     memset(line, 0, LINELEN);
     sprintf(line, "%s", body);
     strcat(message, line);
@@ -104,17 +104,17 @@ char *compute_delete_request(char *host, char *url, char *token,
     char *message = (char *)calloc(BUFLEN, sizeof(char));
     char *line = (char *)calloc(LINELEN, sizeof(char));
 
-    // Step 1: write the method name, URL, request params (if any) and protocol type
+    // write the method name, URL, request params (if any) and protocol type
     sprintf(line, "DELETE %s HTTP/1.1", url);
 
     compute_message(message, line);
 
-    // Step 2: add the host
+    // add the host
     memset(line, 0, LINELEN);
     sprintf(line, "Host: %s", host);
     compute_message(message, line);
 
-    // Step 3 (optional): add headers and/or cookies, according to the protocol format
+    // (optional): add headers and/or cookies, according to the protocol format
     if (cookies != NULL)
     {
         for (int i = 0; i < cookies_count; i++)
@@ -131,7 +131,7 @@ char *compute_delete_request(char *host, char *url, char *token,
         compute_message(message, line);
     }
     
-    // Step 4: add final new line
+    // add final new line
     compute_message(message, "");
     free(line);
     return message;
