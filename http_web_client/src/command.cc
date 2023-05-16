@@ -55,7 +55,7 @@ void register_user(string ip, string access_route)
     string response = auth_user(ip, access_route);
     int http_return_code = get_http_code(response);
 
-    if (check_for_http_errors(response) && http_return_code == 200)
+    if (check_for_http_errors(response))
     {
         io_print_success("Registered successfully", http_return_code);
     }
@@ -68,7 +68,7 @@ string login_user(string ip, string access_route)
     string to_ret = "";
     int http_return_code = get_http_code(response);
 
-    if (check_for_http_errors(response) && http_return_code == 200)
+    if (check_for_http_errors(response))
     {
         int cookie_pos = response.find(' ', response.find("Set-Cookie:")) + 1;
         to_ret = response.substr(cookie_pos, response.find("\r\n", cookie_pos) - cookie_pos);

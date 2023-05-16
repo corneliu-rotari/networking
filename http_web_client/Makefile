@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-I. -Wall -fsanitize=undefined -fsanitize=address
+CFLAGS=-I. -Wall #-fsanitize=undefined -fsanitize=address
 
 client: src/*.cc headers/*.hh client.cc
 	$(CC) $(CFLAGS) -o $@ $^

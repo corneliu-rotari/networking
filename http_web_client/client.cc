@@ -17,7 +17,6 @@
 
 int main(int argc, char *argv[])
 {
-    int sockfd;
     string ip = "34.254.242.81";
     string access_route = "/api/v1/tema";
 
@@ -47,6 +46,9 @@ int main(int argc, char *argv[])
         else if (user_input == "logout")
         {
             login_cookie = logout_user(ip, access_route + "/auth/logout", login_cookie);
+            if (login_cookie == "") {
+                jwt_token = "";
+            }
         }
         else if (user_input == "enter_library")
         {

@@ -83,7 +83,7 @@ void io_print_success(string content, int code)
          << endl;
 }
 
-void io_print_error(string content, int code = -1)
+void io_print_error(string content, int code)
 {
     cout << "[Error";
 

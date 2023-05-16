@@ -16,7 +16,7 @@ json io_get_book(void);
 
 // Output
 
-void io_print_error(string content, int code);
+void io_print_error(string content, int code = -1);
 void io_print_success(string content, int code = -1);
 
 #endif
