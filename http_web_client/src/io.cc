@@ -14,10 +14,11 @@ json io_get_user_info(void)
     json j;
     string usr = promt("username");
     string pswd = promt("password");
-    if (usr.find(' ') != string::npos && pswd.find(' ') != string::npos)
+    if (usr.find(' ') == string::npos && pswd.find(' ') == string::npos)
     {
         j["password"] = pswd;
         j["username"] = usr;
+
     }
     return j;
 }

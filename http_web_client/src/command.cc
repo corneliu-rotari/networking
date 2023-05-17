@@ -54,7 +54,6 @@ string auth_user(string ip, string access_route)
     return send_request(ip, access_route, message);
 }
 
-
 void register_user(string ip, string access_route)
 {
     string response = auth_user(ip, access_route);
@@ -69,7 +68,8 @@ void register_user(string ip, string access_route)
 string login_user(string ip, string access_route)
 {
     string response = auth_user(ip, access_route);
-    if (response == "") {
+    if (response == "")
+    {
         io_print_error("Credentials should not contain spaces");
     }
 
