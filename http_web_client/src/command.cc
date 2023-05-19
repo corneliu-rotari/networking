@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <iostream>
 
+#define _CHECKER_
+
 string send_request(string ip, string access, char *message)
 {
     int fd = open_connection((char *)ip.c_str(), 8080, AF_INET, SOCK_STREAM, 0);
@@ -120,12 +122,18 @@ void get_books(string ip, string access_route, string token)
     if (check_for_http_errors(response))
     {
         json book_list = get_http_body_json(response);
+
+#ifdef _CHECKER_
+        cout << book_list << endl;
+#endif
+#ifndef _CHECKER_
         for (json::iterator elem = book_list.begin(); elem != book_list.end(); elem++)
         {
             json book = *elem;
             cout << "[Id] : " << book["id"] << " [Title] : " << book["title"] << endl;
         }
         cout << endl;
+#endif
     }
 }
 
@@ -146,14 +154,18 @@ void get_book(string ip, string access_route, string token)
     if (check_for_http_errors(response))
     {
         json book = get_http_body_json(response);
-        cout << "[Id] : " << book["id"]
-             << " [Title] : " << book["title"]
-             << " [Author] : " << book["author"]
-             << " [Publisher] : " << book["publisher"]
-             << " [Genre] : " << book["genre"]
-             << " [Page_count] : " << book["page_count"]
-             << endl
-             << endl;
+
+#ifdef _CHECKER_
+        cout << book << endl;
+#endif
+#ifndef _CHECKER_
+        cout << "[Id] : " << book["id"] << endl
+             << "[Title] : " << book["title"] << endl
+             << "[Author] : " << book["author"] << endl
+             << "[Publisher] : " << book["publisher"] << endl
+             << "[Genre] : " << book["genre"] << endl
+             << "[Page_count] : " << book["page_count"] << endl;
+#endif
     }
 }
 

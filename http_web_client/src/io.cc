@@ -86,8 +86,7 @@ void io_print_success(string content, int code)
         cout << " " << code;
     }
 
-    cout << "] : " << content << endl
-         << endl;
+    cout << "] : " << content << endl;
 }
 
 void io_print_error(string content, int code)
@@ -99,6 +98,5 @@ void io_print_error(string content, int code)
         cout << " " << code;
     }
 
-    cout << "] : " << content << endl
-         << endl;
+    cout << "] : " << content << endl;
 }

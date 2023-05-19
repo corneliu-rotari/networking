@@ -62,6 +62,9 @@ The validation of the user authentication and jwt_token presense are handled int
 
 If the errors are from the server the message contains the error code `parse_http.hh`, on the other hand there are not error code if it occurs in the validation phase.
 
+In [`command.cc`](./src/command.cc) exist a `#define _CHECKER_` that enables output for the checker.
+If not defined it prints regular output.
+
 ***
 
 ## Additional Libraries and Code
