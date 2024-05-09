@@ -17,7 +17,7 @@
 
 int main(int argc, char *argv[])
 {
-    string ip = "34.254.242.81";
+    string ip = "34.246.184.49";
     string access_route = "/api/v1/tema";
 
     string user_input = "";
